@@ -5,7 +5,17 @@ import { LayoutDashboard, Calculator, History, LogOut, User } from 'lucide-react
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem('user'));
+  
+  const getUser = () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const user = getUser();
 
   const handleLogout = () => {
     localStorage.removeItem('token');

@@ -19,12 +19,17 @@ const Login = () => {
     setError('');
     try {
       const res = await axios.post('http://localhost:5000/api/auth/login', formData);
-      // localStorage.setItem('token', res.data.data.token);
-      // localStorage.setItem('user', JSON.stringify(res.data.data.user));
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+      
+      // Robust extraction of data
+      const payload = res.data.data || res.data;
 
-      navigate('/');
+      if (payload && payload.token) {
+        localStorage.setItem('token', payload.token);
+        localStorage.setItem('user', JSON.stringify(payload.user));
+        navigate('/');
+      } else {
+        setError('Unexpected response from server. Please try again.');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {

@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment files — KABHI PUSH MAT KARO
+.env
+.env.local
+.env.development
+.env.production
+.env.*
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Coverage
+coverage/
+
+# Temp
+tmp/
+temp/
+
+
+
+echo ".env" >> .gitignore
+echo "node_modules/" >> .gitignore
