@@ -21,13 +21,13 @@ const MINIMUMS = {
 
 // Research paper scores — Arts group. Science = Arts * 1.25
 const PAPER_SCORES_ARTS = {
-  "non_refereed":    2,
-  "refereed":        5,
-  "if_lt_1":         8,
-  "if_1_2":         10,
-  "if_2_5":         12,
-  "if_5_10":        15,
-  "if_gt_10":       20,
+  "non_refereed_no_if": 10,  // frontend key
+  "refereed_no_if":     15,  // frontend key
+  "if_below_1":         20,
+  "if_1_2":             25,
+  "if_2_5":             30,
+  "if_5_10":            35,
+  "if_above_10":        40,
 };
 
 // Author-type multipliers for papers
@@ -225,14 +225,22 @@ router.post("/", verifyToken, async (req, res) => {
     } = req.body;
 
     // ── Cat I ──────────────────────────────────
-    const teachingScore = calcCatI(cat1_teaching ?? 0);
-    const adminScore = typeof cat1_admin === "number" ? cat1_admin : 0;
-    const total_cat1 = Math.min(teachingScore + adminScore, 100);
+    // const teachingScore = calcCatI(cat1_teaching ?? 0);
+    // const adminScore = typeof cat1_admin === "number" ? cat1_admin : 0;
+    // const total_cat1 = Math.min(teachingScore + adminScore, 100);
 
     // ── Cat II ─────────────────────────────────
-    const total_cat2 = typeof cat2_co_curricular === "number"
-      ? cat2_co_curricular
-      : 0;
+    // const total_cat2 = typeof cat2_co_curricular === "number"
+    //   ? cat2_co_curricular
+    //   : 0;
+
+
+    // ── Cat I ──────────────────────────────────
+    const total_cat1 = Number(req.body.total_cat1 ?? 0);
+
+    // ── Cat II ─────────────────────────────────
+    const total_cat2 = Number(req.body.total_cat2 ?? 0);
+
 
     // ── Cat III ────────────────────────────────
     const papersResult   = calcResearchPapers(research_papers, discipline);
@@ -308,8 +316,6 @@ router.post("/", verifyToken, async (req, res) => {
     // ── Build result object ────────────────────
     const scoreBreakdown = {
       cat1: {
-        teaching: teachingScore,
-        admin: adminScore,
         total: total_cat1,
       },
       cat2: {

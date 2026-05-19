@@ -5,31 +5,31 @@ import { PlusCircle, Trash2, Info, ChevronDown } from 'lucide-react';
 // Science group scores are ~25% higher (multiply by 1.25)
 const SCORES = {
   'non_refereed_no_if': { single: 10, two: 7, first: 7, joint: 3 },
-  'refereed_no_if':     { single: 15, two: 10.5, first: 10.5, joint: 4.5 },
-  'if_below_1':         { single: 20, two: 14, first: 14, joint: 6 },
-  'if_1_2':             { single: 25, two: 17.5, first: 17.5, joint: 7.5 },
-  'if_2_5':             { single: 30, two: 21, first: 21, joint: 9 },
-  'if_5_10':            { single: 35, two: 24.5, first: 24.5, joint: 10.5 },
-  'if_above_10':        { single: 40, two: 28, first: 28, joint: 12 },
+  'refereed_no_if': { single: 15, two: 10.5, first: 10.5, joint: 4.5 },
+  'if_below_1': { single: 20, two: 14, first: 14, joint: 6 },
+  'if_1_2': { single: 25, two: 17.5, first: 17.5, joint: 7.5 },
+  'if_2_5': { single: 30, two: 21, first: 21, joint: 9 },
+  'if_5_10': { single: 35, two: 24.5, first: 24.5, joint: 10.5 },
+  'if_above_10': { single: 40, two: 28, first: 28, joint: 12 },
 };
 
 const SCIENCE_MULTIPLIER = 1.25;
 
 const JOURNAL_TYPES = [
   { value: 'non_refereed_no_if', label: 'UGC Listed / Non-Refereed (No Impact Factor)' },
-  { value: 'refereed_no_if',     label: 'Peer-Reviewed / Refereed (No Impact Factor)' },
-  { value: 'if_below_1',         label: 'Impact Factor < 1' },
-  { value: 'if_1_2',             label: 'Impact Factor 1–2' },
-  { value: 'if_2_5',             label: 'Impact Factor 2–5' },
-  { value: 'if_5_10',            label: 'Impact Factor 5–10' },
-  { value: 'if_above_10',        label: 'Impact Factor > 10' },
+  { value: 'refereed_no_if', label: 'Peer-Reviewed / Refereed (No Impact Factor)' },
+  { value: 'if_below_1', label: 'Impact Factor < 1' },
+  { value: 'if_1_2', label: 'Impact Factor 1–2' },
+  { value: 'if_2_5', label: 'Impact Factor 2–5' },
+  { value: 'if_5_10', label: 'Impact Factor 5–10' },
+  { value: 'if_above_10', label: 'Impact Factor > 10' },
 ];
 
 const AUTHOR_TYPES = [
   { value: 'single', label: 'Single Author' },
-  { value: 'two',    label: 'Two Authors (70% each)' },
-  { value: 'first',  label: 'First / Principal / Corresponding Author (3+ Authors)' },
-  { value: 'joint',  label: 'Joint Author (3+ Authors, 30% share)' },
+  { value: 'two', label: 'Two Authors (70% each)' },
+  { value: 'first', label: 'First / Principal / Corresponding Author (3+ Authors)' },
+  { value: 'joint', label: 'Joint Author (3+ Authors, 30% share)' },
 ];
 
 const emptyPaper = () => ({
@@ -45,9 +45,22 @@ function calcScore(journalType, authorType, discipline) {
   return discipline === 'Science' ? +(base * SCIENCE_MULTIPLIER).toFixed(2) : base;
 }
 
+// export default function ResearchPapers({ discipline = 'Arts', onChange }) {
+//   const [papers, setPapers] = useState([emptyPaper()]);
+// const [expanded, setExpanded] = useState({});
+// const firstPaper = papers[0];
+
 export default function ResearchPapers({ discipline = 'Arts', onChange }) {
-  const [papers, setPapers] = useState([emptyPaper()]);
-  const [expanded, setExpanded] = useState({});
+  const initialPaper = emptyPaper();
+  initialPaper.score = calcScore(initialPaper.journalType, initialPaper.authorType, discipline);
+  const [papers, setPapers] = useState([initialPaper]);
+  const [expanded, setExpanded] = useState({ [initialPaper.id]: true }); // firstPaper.id → initialPaper.id
+
+  React.useEffect(() => {
+    onChange?.([initialPaper]);
+  }, []); // eslint-disable-line
+
+
 
   const updatePaper = (id, field, value) => {
     const updated = papers.map((p) => {
@@ -55,7 +68,7 @@ export default function ResearchPapers({ discipline = 'Arts', onChange }) {
       const next = { ...p, [field]: value };
       next.score = calcScore(
         field === 'journalType' ? value : next.journalType,
-        field === 'authorType'  ? value : next.authorType,
+        field === 'authorType' ? value : next.authorType,
         discipline
       );
       return next;

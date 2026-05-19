@@ -7,6 +7,7 @@ const router = express.Router();
 const pool = require("../db");
 const { verifyToken } = require("../middleware/auth"); // adjust path if needed
 
+
 // ─────────────────────────────────────────────
 // CONSTANTS — UGC 2018
 // ─────────────────────────────────────────────
@@ -225,14 +226,10 @@ router.post("/", verifyToken, async (req, res) => {
     } = req.body;
 
     // ── Cat I ──────────────────────────────────
-    const teachingScore = calcCatI(cat1_teaching ?? 0);
-    const adminScore = typeof cat1_admin === "number" ? cat1_admin : 0;
-    const total_cat1 = Math.min(teachingScore + adminScore, 100);
+   const total_cat1 = Number(req.body.total_cat1 ?? 0);
 
     // ── Cat II ─────────────────────────────────
-    const total_cat2 = typeof cat2_co_curricular === "number"
-      ? cat2_co_curricular
-      : 0;
+    const total_cat2 = Number(req.body.total_cat2 ?? 0);
 
     // ── Cat III ────────────────────────────────
     const papersResult   = calcResearchPapers(research_papers, discipline);
@@ -308,8 +305,6 @@ router.post("/", verifyToken, async (req, res) => {
     // ── Build result object ────────────────────
     const scoreBreakdown = {
       cat1: {
-        teaching: teachingScore,
-        admin: adminScore,
         total: total_cat1,
       },
       cat2: {
