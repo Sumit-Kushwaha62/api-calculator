@@ -121,16 +121,108 @@ const UGC_RULES = {
     use_pct_caps: false, // 2018 uses 30% cap on policy+lectures only
   },
 
-  // ── UGC 2016 — same as 2018 (minor changes) ──
-  "2016": null, // will copy from 2018 below
+  // ── UGC 2016 (4th Amendment, 11 July 2016) ────
+  "2016": {
+    minimums: {
+      "Assistant Professor (Stage 1)": { cat1: 75, cat2: 15, cat3: 10, min_cat3_categories: 0 },
+      "Assistant Professor (Stage 2)": { cat1: 75, cat2: 15, cat3: 20, min_cat3_categories: 0 },
+      "Assistant Professor (Stage 3)": { cat1: 75, cat2: 15, cat3: 30, min_cat3_categories: 3 },
+      "Associate Professor":           { cat1: 75, cat2: 15, cat3: 40, min_cat3_categories: 3 },
+      "Professor":                     { cat1: 75, cat2: 15, cat3: 50, min_cat3_categories: 3 },
+    },
+    paper_scores: {
+      "non_refereed_no_if": 25,
+      "refereed_no_if":     25,
+      "if_below_1":         30,
+      "if_1_2":             35,
+      "if_2_5":             40,
+      "if_5_10":            45,
+      "if_above_10":        50,
+    },
+    science_multiplier: 1.0, // NO discipline multiplier in 2016
+    book_scores: {
+      "authored_international": 12,
+      "authored_national":       8,
+      "chapter":                 5,
+      "editor_international":   10,
+      "editor_national":         8,
+      "translation_chapter":     3,
+      "translation_book":        8,
+    },
+    phd_scores: {
+      "phd_awarded_single":   10,
+      "phd_awarded_joint":     7,
+      "phd_awarded_cosup":     3,
+      "phd_submitted_single":  7,
+      "phd_submitted_joint":   5,
+      "phd_submitted_cosup":   3,
+      "mphil":                  3,
+      "pg_dissertation":        2,
+      "project_major_single":  20,
+      "project_major_pi":      10,
+      "project_major_copi":    10,
+      "project_minor_single":  10,
+      "project_minor_pi":       8,
+      "project_minor_copi":     8,
+      "project_ongoing_major":  5,
+      "project_ongoing_minor":  2,
+    },
+    use_pct_caps: false,
+  },
 
-  // ── UGC 2025 — same as 2018 for now ──
-  "2025": null,
+  // ── UGC 2025 (4th Amendment to 2018, 2024) ───
+  "2025": {
+    minimums: {
+      "Assistant Professor (Stage 1)": { cat1: 100, cat2: 0, cat3: 10, min_cat3_categories: 0 },
+      "Assistant Professor (Stage 2)": { cat1: 100, cat2: 0, cat3: 20, min_cat3_categories: 0 },
+      "Assistant Professor (Stage 3)": { cat1: 100, cat2: 0, cat3: 30, min_cat3_categories: 0 },
+      "Associate Professor":           { cat1: 90,  cat2: 0, cat3: 40, min_cat3_categories: 0 },
+      "Professor":                     { cat1: 80,  cat2: 0, cat3: 50, min_cat3_categories: 0 },
+    },
+    paper_scores: {
+      "non_refereed_no_if":  8,
+      "refereed_no_if":      8,
+      "if_below_1":         10,
+      "if_1_2":             15,
+      "if_2_5":             20,
+      "if_5_10":            25,
+      "if_above_10":        30,
+    },
+    science_multiplier: 1.25,
+    book_scores: {
+      "authored_international": 12,
+      "authored_national":      10,
+      "chapter":                 5,
+      "editor_international":   10,
+      "editor_national":         8,
+      "translation_chapter":     3,
+      "translation_book":        8,
+    },
+    phd_scores: {
+      "phd_awarded_single":   10,
+      "phd_awarded_joint":     7,
+      "phd_awarded_cosup":     3,
+      "phd_submitted_single":  7,
+      "phd_submitted_joint":   5,
+      "phd_submitted_cosup":   3,
+      "mphil":                  3,
+      "pg_dissertation":        2,
+      "project_major_single":  10,
+      "project_major_pi":       8,
+      "project_major_copi":     5,
+      "project_minor_single":   5,
+      "project_minor_pi":       4,
+      "project_minor_copi":     3,
+      "project_ongoing_major":  5,
+      "project_ongoing_minor":  2,
+    },
+    use_pct_caps: false,
+    no_cat3_cap: true, // 2025 has NO cap on any sub-category
+  },
 };
 
-// 2016 and 2025 same as 2018 for now
-UGC_RULES["2016"] = UGC_RULES["2018"];
-UGC_RULES["2025"] = UGC_RULES["2018"];
+// 2013 = 2010 amendment, same rules
+UGC_RULES["2013"] = UGC_RULES["2010"];
 
 // ─────────────────────────────────────────────
 // AUTHOR MULTIPLIERS
@@ -250,6 +342,16 @@ function calcLectures(items = []) {
 function applyCat3Cap(rawCat3, papersTotal, booksTotal, phdTotal,
                       patentsAwardsTotal, policyDocTotal, lecturesTotal,
                       moocsTotal, rules) {
+
+  // UGC 2025 — no cap at all
+  if (rules.no_cat3_cap) {
+    return {
+      total: Math.round(rawCat3 * 100) / 100,
+      capApplied: false,
+      capType: "none_2025",
+      excessCap: 0,
+    };
+  }
 
   if (rules.use_pct_caps) {
     // UGC 2010 — sub-category % caps

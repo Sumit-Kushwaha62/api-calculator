@@ -12,25 +12,56 @@ import Lectures from '../components/Lectures';
 import CatII from '../components/Cat_II';
 import { calculateAPI } from '../services/api';
 
-// ─── Minimums per designation ─────────────────────────────────
-const MINIMUMS = {
-  'Assistant Professor (Stage 1)': { cat1: 75, cat2: 15, cat3: 10 },
-  'Assistant Professor (Stage 2)': { cat1: 75, cat2: 15, cat3: 20 },
-  'Assistant Professor (Stage 3)': { cat1: 75, cat2: 15, cat3: 30 },
-  'Associate Professor':           { cat1: 75, cat2: 15, cat3: 40 },
-  'Professor':                     { cat1: 75, cat2: 15, cat3: 50 },
+// ─── Minimums per regulation + designation ────────────────────
+// FIX 1: regulation-aware minimums (was hardcoded 75/15 for all)
+const MINIMUMS_BY_REG = {
+  '2010': {
+    'Assistant Professor (Stage 1)': { cat1: 75, cat2: 15, cat3: 10 },
+    'Assistant Professor (Stage 2)': { cat1: 75, cat2: 15, cat3: 20 },
+    'Assistant Professor (Stage 3)': { cat1: 75, cat2: 15, cat3: 30 },
+    'Associate Professor':           { cat1: 75, cat2: 15, cat3: 40 },
+    'Professor':                     { cat1: 75, cat2: 15, cat3: 50 },
+  },
+  '2016': {
+    'Assistant Professor (Stage 1)': { cat1: 75, cat2: 15, cat3: 10 },
+    'Assistant Professor (Stage 2)': { cat1: 75, cat2: 15, cat3: 20 },
+    'Assistant Professor (Stage 3)': { cat1: 75, cat2: 15, cat3: 30 },
+    'Associate Professor':           { cat1: 75, cat2: 15, cat3: 40 },
+    'Professor':                     { cat1: 75, cat2: 15, cat3: 50 },
+  },
+  '2018': {
+    'Assistant Professor (Stage 1)': { cat1: 75, cat2: 15, cat3: 10 },
+    'Assistant Professor (Stage 2)': { cat1: 75, cat2: 15, cat3: 20 },
+    'Assistant Professor (Stage 3)': { cat1: 75, cat2: 15, cat3: 30 },
+    'Associate Professor':           { cat1: 75, cat2: 15, cat3: 40 },
+    'Professor':                     { cat1: 75, cat2: 15, cat3: 50 },
+  },
+  '2025': {
+    // FIX 1: Cat I raised, Cat II = 0 (not mandatory in 2025)
+    'Assistant Professor (Stage 1)': { cat1: 100, cat2: 0, cat3: 10 },
+    'Assistant Professor (Stage 2)': { cat1: 100, cat2: 0, cat3: 20 },
+    'Assistant Professor (Stage 3)': { cat1: 100, cat2: 0, cat3: 30 },
+    'Associate Professor':           { cat1: 90,  cat2: 0, cat3: 40 },
+    'Professor':                     { cat1: 80,  cat2: 0, cat3: 50 },
+  },
 };
+// 2013 = same as 2010
+MINIMUMS_BY_REG['2013'] = MINIMUMS_BY_REG['2010'];
 
 // ─── Cat I rules per regulation year ─────────────────────────
 const CAT1_RULES = {
-  '2018': { i: 100, ii: 30, iii: 10, iv: 20, total: 100 },
-  '2016': { i: 100, ii: 30, iii: 10, iv: 20, total: 100 },
   '2010': { i: 60,  ii: 20, iii: 20, iv: 25, total: 120 },
+  '2013': { i: 60,  ii: 20, iii: 20, iv: 25, total: 120 },
+  '2016': { i: 100, ii: 30, iii: 10, iv: 20, total: 100 },
+  '2018': { i: 100, ii: 30, iii: 10, iv: 20, total: 100 },
   '2025': { i: 100, ii: 30, iii: 10, iv: 20, total: 100 },
 };
 
-// ─── Cat III total ────────────────────────────────────────────
+// ─── Cat III preview calc — regulation-aware ─────────────────
+// FIX 2: 2010 uses % sub-caps, 2025 uses no cap, 2016/2018 uses 30% cap
 function calcCat3Total(formData) {
+  const reg = formData.regulation || '2018';
+
   const papersTotal        = (formData.research_papers || []).reduce((s, p) => s + (p.score || 0), 0);
   const booksTotal         = (formData.books || []).reduce((s, b) => s + (b.score || 0), 0);
   const phdTotal           = (formData.phd_projects || []).reduce((s, p) => s + (p.score || 0), 0);
@@ -39,10 +70,50 @@ function calcCat3Total(formData) {
   const patentsAwardsTotal = patentItems.filter((i) => i.type !== 'policy_document').reduce((s, i) => s + (i.score || 0), 0);
   const lecturesTotal      = (formData.lectures || []).reduce((s, l) => s + (l.score || 0), 0);
   const rawTotal = papersTotal + booksTotal + phdTotal + patentsAwardsTotal + policyDocTotal + lecturesTotal;
+
+  // 2025 — no cap at all
+  if (reg === '2025') {
+    return {
+      papersTotal, booksTotal, phdTotal, patentsAwardsTotal,
+      policyDocTotal, lecturesTotal, rawTotal,
+      capApplied: false, cap30: 0, excess: 0,
+      capType: 'none',
+      total: rawTotal,
+    };
+  }
+
+  // 2010/2013 — % sub-caps
+  if (reg === '2010' || reg === '2013') {
+    const maxPapers   = Math.round(rawTotal * 0.55);
+    const maxProjects = Math.round(rawTotal * 0.20);
+    const maxGuidance = Math.round(rawTotal * 0.10);
+    const maxTraining = Math.round(rawTotal * 0.15);
+    const cappedPapers   = Math.min(papersTotal + booksTotal, maxPapers);
+    const cappedProjects = Math.min(patentsAwardsTotal, maxProjects);
+    const cappedGuidance = Math.min(phdTotal, maxGuidance);
+    const cappedTraining = Math.min(lecturesTotal, maxTraining);
+    const cappedTotal = cappedPapers + cappedProjects + cappedGuidance + cappedTraining;
+    return {
+      papersTotal, booksTotal, phdTotal, patentsAwardsTotal,
+      policyDocTotal, lecturesTotal, rawTotal,
+      capApplied: cappedTotal < rawTotal,
+      cap30: 0, excess: rawTotal - cappedTotal,
+      capType: 'pct_2010',
+      total: cappedTotal,
+    };
+  }
+
+  // 2016/2018 — 30% cap on policy+lectures
   const combinedPL = policyDocTotal + lecturesTotal;
   const cap30  = rawTotal * 0.3;
   const excess = combinedPL > cap30 ? combinedPL - cap30 : 0;
-  return { papersTotal, booksTotal, phdTotal, patentsAwardsTotal, policyDocTotal, lecturesTotal, rawTotal, capApplied: excess > 0, cap30, excess, total: rawTotal - excess };
+  return {
+    papersTotal, booksTotal, phdTotal, patentsAwardsTotal,
+    policyDocTotal, lecturesTotal, rawTotal,
+    capApplied: excess > 0, cap30, excess,
+    capType: 'policy_lecture_30pct',
+    total: rawTotal - excess,
+  };
 }
 
 // ─── Score badge ──────────────────────────────────────────────
@@ -93,6 +164,10 @@ const Calculator = () => {
   const reg = formData.regulation;
   const r1 = CAT1_RULES[reg] || CAT1_RULES['2018'];
 
+  // FIX 1: mins now comes from regulation-aware object
+  const regMins = MINIMUMS_BY_REG[reg] || MINIMUMS_BY_REG['2018'];
+  const mins = regMins[formData.designation] || {};
+
   const cat1_i   = formData.cat1_i_allotted > 0 ? Math.min(Math.round((formData.cat1_i_undertaken / formData.cat1_i_allotted) * r1.i), r1.i) : 0;
   const cat1_ii  = Math.min(Math.round(Number(formData.cat1_ii_hours) / 10), r1.ii);
   const cat1_iii = Math.min(Number(formData.cat1_iii_score), r1.iii);
@@ -103,7 +178,6 @@ const Calculator = () => {
 
   const cat3 = calcCat3Total(formData);
   const grand_total = total_cat1 + total_cat2 + cat3.total;
-  const mins = MINIMUMS[formData.designation] || {};
   const policyDocTotal = (formData.patents_awards || []).filter((i) => i.type === 'policy_document').reduce((s, i) => s + (i.score || 0), 0);
 
   const UGC_STEPS  = ['setup', 'cat1', 'cat2', 'cat3', 'review'];
@@ -145,7 +219,7 @@ const Calculator = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-2">UGC Standard API</h2>
             <p className="text-sm text-gray-500 mb-4">CAS Promotion, Direct Recruitment, or PBAS submission as per UGC regulations.</p>
             <div className="flex flex-wrap gap-2 mb-4">
-              {['2010', '2016', '2018', '2025'].map((y) => (
+              {['2010/2013', '2016', '2018', '2025'].map((y) => (
                 <span key={y} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">UGC {y}</span>
               ))}
             </div>
@@ -203,8 +277,12 @@ const Calculator = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Regulation Year</label>
+                {/* FIX 3: 2013 added as separate option */}
                 <select name="regulation" value={formData.regulation} onChange={handleChange} className="input-field">
-                  <option>2010</option><option>2016</option><option>2018</option><option>2025</option>
+                  <option value="2010">2010 / 2013</option>
+                  <option value="2016">2016</option>
+                  <option value="2018">2018</option>
+                  <option value="2025">2025</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -240,9 +318,19 @@ const Calculator = () => {
             <div className="bg-blue-50 rounded-lg p-4 flex items-start gap-3">
               <Info size={16} className="text-blue-500 mt-0.5 shrink-0" />
               <p className="text-xs text-blue-700">
-                For <strong>{formData.designation}</strong> — Minimum required: Cat I ≥ {mins.cat1}, Cat II ≥ {mins.cat2}, Cat III ≥ {mins.cat3} pts.
+                For <strong>{formData.designation}</strong> under UGC {reg} — Minimum required: Cat I ≥ {mins.cat1},
+                {mins.cat2 > 0 ? ` Cat II ≥ ${mins.cat2},` : ' Cat II not mandatory,'} Cat III ≥ {mins.cat3} pts.
               </p>
             </div>
+            {/* 2025 special note */}
+            {reg === '2025' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700">
+                  <strong>UGC 2025:</strong> Category II is not mandatory. Category I minimum is higher ({mins.cat1} pts). No cap on Cat III sub-categories.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -338,9 +426,17 @@ const Calculator = () => {
 
         {/* CAT II */}
         {ugcStep === 'cat2' && (
-          <CatII onChange={({ items, total_cat2 }) =>
-            setFormData((p) => ({ ...p, cat2_items: items, cat2_total: total_cat2 }))
-          } />
+          <>
+            {reg === '2025' && (
+              <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 flex items-start gap-2">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <span><strong>UGC 2025:</strong> Category II is not mandatory. You may skip this step.</span>
+              </div>
+            )}
+            <CatII onChange={({ items, total_cat2 }) =>
+              setFormData((p) => ({ ...p, cat2_items: items, cat2_total: total_cat2 }))
+            } />
+          </>
         )}
 
         {/* CAT III */}
@@ -380,10 +476,20 @@ const Calculator = () => {
                   <span className="font-semibold text-emerald-700">{Number(v).toFixed(2)} pts</span>
                 </div>
               ))}
-              {cat3.capApplied && (
+              {cat3.capApplied && cat3.capType === 'policy_lecture_30pct' && (
                 <div className="flex justify-between text-sm text-red-600 border-t pt-2">
-                  <span>30% Cap Deduction</span><span>- {cat3.excess.toFixed(2)} pts</span>
+                  <span>30% Cap Deduction (Policy Docs + Lectures)</span>
+                  <span>- {cat3.excess.toFixed(2)} pts</span>
                 </div>
+              )}
+              {cat3.capApplied && cat3.capType === 'pct_2010' && (
+                <div className="flex justify-between text-sm text-red-600 border-t pt-2">
+                  <span>UGC 2010 Sub-category Cap Applied</span>
+                  <span>- {cat3.excess.toFixed(2)} pts</span>
+                </div>
+              )}
+              {!cat3.capApplied && reg === '2025' && (
+                <div className="text-xs text-emerald-600 border-t pt-2">✓ No cap applied (UGC 2025)</div>
               )}
               <div className="flex justify-between font-bold text-emerald-800 border-t pt-2">
                 <span>Total</span><span>{cat3.total.toFixed(2)} pts</span>
@@ -409,7 +515,7 @@ const Calculator = () => {
             {(() => {
               const gaps = [];
               if (total_cat1 < (mins.cat1 || 0)) gaps.push(`Cat I: need ${mins.cat1 - total_cat1} more pts`);
-              if (total_cat2 < (mins.cat2 || 0)) gaps.push(`Cat II: need ${mins.cat2 - total_cat2} more pts`);
+              if (mins.cat2 > 0 && total_cat2 < mins.cat2) gaps.push(`Cat II: need ${mins.cat2 - total_cat2} more pts`);
               if (cat3.total < (mins.cat3 || 0)) gaps.push(`Cat III: need ${(mins.cat3 - cat3.total).toFixed(2)} more pts`);
               return gaps.length === 0
                 ? <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center text-green-700 font-semibold">✅ Eligible for {formData.purpose}</div>
