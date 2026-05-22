@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Save, ChevronLeft, ChevronRight, Info,
-  MapPin, GraduationCap, ArrowRight
+  MapPin, GraduationCap, ArrowRight, Award
 } from 'lucide-react';
 import ResearchPapers from '../components/ResearchPapers';
 import Books from '../components/Books';
@@ -13,7 +13,6 @@ import CatII from '../components/Cat_II';
 import { calculateAPI } from '../services/api';
 
 // ─── Minimums per regulation + designation ────────────────────
-// FIX 1: regulation-aware minimums (was hardcoded 75/15 for all)
 const MINIMUMS_BY_REG = {
   '2010': {
     'Assistant Professor (Stage 1)': { cat1: 75, cat2: 15, cat3: 10 },
@@ -37,7 +36,6 @@ const MINIMUMS_BY_REG = {
     'Professor':                     { cat1: 75, cat2: 15, cat3: 50 },
   },
   '2025': {
-    // FIX 1: Cat I raised, Cat II = 0 (not mandatory in 2025)
     'Assistant Professor (Stage 1)': { cat1: 100, cat2: 0, cat3: 10 },
     'Assistant Professor (Stage 2)': { cat1: 100, cat2: 0, cat3: 20 },
     'Assistant Professor (Stage 3)': { cat1: 100, cat2: 0, cat3: 30 },
@@ -45,7 +43,6 @@ const MINIMUMS_BY_REG = {
     'Professor':                     { cat1: 80,  cat2: 0, cat3: 50 },
   },
 };
-// 2013 = same as 2010
 MINIMUMS_BY_REG['2013'] = MINIMUMS_BY_REG['2010'];
 
 // ─── Cat I rules per regulation year ─────────────────────────
@@ -58,7 +55,6 @@ const CAT1_RULES = {
 };
 
 // ─── Cat III preview calc — regulation-aware ─────────────────
-// FIX 2: 2010 uses % sub-caps, 2025 uses no cap, 2016/2018 uses 30% cap
 function calcCat3Total(formData) {
   const reg = formData.regulation || '2018';
 
@@ -71,7 +67,6 @@ function calcCat3Total(formData) {
   const lecturesTotal      = (formData.lectures || []).reduce((s, l) => s + (l.score || 0), 0);
   const rawTotal = papersTotal + booksTotal + phdTotal + patentsAwardsTotal + policyDocTotal + lecturesTotal;
 
-  // 2025 — no cap at all
   if (reg === '2025') {
     return {
       papersTotal, booksTotal, phdTotal, patentsAwardsTotal,
@@ -82,7 +77,6 @@ function calcCat3Total(formData) {
     };
   }
 
-  // 2010/2013 — % sub-caps
   if (reg === '2010' || reg === '2013') {
     const maxPapers   = Math.round(rawTotal * 0.55);
     const maxProjects = Math.round(rawTotal * 0.20);
@@ -103,7 +97,6 @@ function calcCat3Total(formData) {
     };
   }
 
-  // 2016/2018 — 30% cap on policy+lectures
   const combinedPL = policyDocTotal + lecturesTotal;
   const cap30  = rawTotal * 0.3;
   const excess = combinedPL > cap30 ? combinedPL - cap30 : 0;
@@ -141,6 +134,8 @@ const Calculator = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // mode: 'select' | 'ugc' | 'merit' | 'state'
   const [mode, setMode] = useState('select');
   const [ugcStep, setUgcStep] = useState('setup');
   const [cat3Step, setCat3Step] = useState('papers');
@@ -164,7 +159,6 @@ const Calculator = () => {
   const reg = formData.regulation;
   const r1 = CAT1_RULES[reg] || CAT1_RULES['2018'];
 
-  // FIX 1: mins now comes from regulation-aware object
   const regMins = MINIMUMS_BY_REG[reg] || MINIMUMS_BY_REG['2018'];
   const mins = regMins[formData.designation] || {};
 
@@ -205,22 +199,32 @@ const Calculator = () => {
   // ══ MODE SELECT ══════════════════════════════════════════════
   if (mode === 'select') {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold text-gray-900">API Score Calculator</h1>
           <p className="text-gray-500 mt-2">Choose what you want to calculate</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button onClick={() => { setMode('ugc'); setUgcStep('setup'); }}
-            className="group text-left border-2 border-gray-200 hover:border-blue-500 rounded-2xl p-6 transition-all hover:shadow-lg bg-white">
+
+        {/* ── 3-card grid ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* Card 1 — UGC Standard API (existing, unchanged) */}
+          <button
+            onClick={() => { setMode('ugc'); setUgcStep('setup'); }}
+            className="group text-left border-2 border-gray-200 hover:border-blue-500 rounded-2xl p-6 transition-all hover:shadow-lg bg-white"
+          >
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
               <GraduationCap size={24} className="text-blue-600 group-hover:text-white" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">UGC Standard API</h2>
-            <p className="text-sm text-gray-500 mb-4">CAS Promotion, Direct Recruitment, or PBAS submission as per UGC regulations.</p>
+            <p className="text-sm text-gray-500 mb-4">
+              CAS Promotion, Direct Recruitment, or PBAS submission as per UGC regulations.
+            </p>
             <div className="flex flex-wrap gap-2 mb-4">
               {['2010/2013', '2016', '2018', '2025'].map((y) => (
-                <span key={y} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">UGC {y}</span>
+                <span key={y} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">
+                  UGC {y}
+                </span>
               ))}
             </div>
             <div className="flex items-center text-blue-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
@@ -228,25 +232,87 @@ const Calculator = () => {
             </div>
           </button>
 
+          {/* Card 2 — UGC Merit Score (new, coming soon) */}
           <div className="text-left border-2 border-gray-200 rounded-2xl p-6 bg-white relative opacity-60">
-            <div className="absolute top-4 right-4 text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full font-medium">Coming Soon</div>
+            <div className="absolute top-4 right-4 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full font-medium">
+              Coming Soon
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+              <Award size={24} className="text-purple-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">UGC Merit Score</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Direct Recruitment shortlisting score as per Appendix II — for University and College level posts.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {['Table 3A — University', 'Table 3B — College'].map((t) => (
+                <span key={t} className="text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-full font-medium">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 3 — State PSC Merit Score (new, coming soon) */}
+          <div className="text-left border-2 border-gray-200 rounded-2xl p-6 bg-white relative opacity-60">
+            <div className="absolute top-4 right-4 text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full font-medium">
+              Coming Soon
+            </div>
             <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
               <MapPin size={24} className="text-orange-500" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">State PSC Merit Score</h2>
-            <p className="text-sm text-gray-500 mb-4">State-level recruitment merit score — JPSC, MPPSC, UPPSC, BPSC, RPSC and more.</p>
+            <p className="text-sm text-gray-500 mb-4">
+              State-level direct recruitment academic score — BSUSC, JPSC, TPSC, WBPSC and more.
+            </p>
             <div className="flex flex-wrap gap-2">
-              {['JPSC', 'MPPSC', 'UPPSC', 'BPSC', 'RPSC'].map((s) => (
-                <span key={s} className="text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded-full font-medium">{s}</span>
+              {['BSUSC', 'JPSC', 'TPSC', 'WBPSC', 'APPSC', '..more'].map((s) => (
+                <span key={s} className="text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded-full font-medium">
+                  {s}
+                </span>
               ))}
             </div>
           </div>
+
         </div>
       </div>
     );
   }
 
   // ══ UGC FLOW ═════════════════════════════════════════════════
+  // NOTE: 'merit' aur 'state' modes ke liye
+  // baad mein yahan if (mode === 'merit') aur if (mode === 'state') blocks add honge
+  // Abhi ye placeholder hai taaki app break na ho
+  if (mode === 'merit' || mode === 'state') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <button
+          onClick={() => setMode('select')}
+          className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1 mb-6"
+        >
+          <ChevronLeft size={16} /> Back to mode selection
+        </button>
+        <div className="card text-center py-16">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            {mode === 'merit'
+              ? <Award size={28} className="text-purple-400" />
+              : <MapPin size={28} className="text-orange-400" />
+            }
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {mode === 'merit' ? 'UGC Merit Score Calculator' : 'State PSC Merit Score Calculator'}
+          </h2>
+          <p className="text-gray-500 text-sm max-w-sm mx-auto">
+            {mode === 'merit'
+              ? 'Table 3A (University) aur Table 3B (College) based shortlisting score calculator — jald aa raha hai.'
+              : 'BSUSC, JPSC, TPSC aur other state PSC ke liye academic merit score calculator — jald aa raha hai.'
+            }
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6">
@@ -277,7 +343,6 @@ const Calculator = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Regulation Year</label>
-                {/* FIX 3: 2013 added as separate option */}
                 <select name="regulation" value={formData.regulation} onChange={handleChange} className="input-field">
                   <option value="2010">2010 / 2013</option>
                   <option value="2016">2016</option>
@@ -322,7 +387,6 @@ const Calculator = () => {
                 {mins.cat2 > 0 ? ` Cat II ≥ ${mins.cat2},` : ' Cat II not mandatory,'} Cat III ≥ {mins.cat3} pts.
               </p>
             </div>
-            {/* 2025 special note */}
             {reg === '2025' && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                 <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
@@ -447,7 +511,6 @@ const Calculator = () => {
               <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">{cat3.total.toFixed(2)} pts</span>
             </div>
 
-            {/* Sub-step tabs */}
             <div className="flex gap-2 overflow-x-auto pb-1">
               {CAT3_STEPS.map((s) => (
                 <button key={s} type="button" onClick={() => setCat3Step(s)}
@@ -463,7 +526,6 @@ const Calculator = () => {
             {cat3Step === 'patents'  && <PatentsAwards data={formData.patents_awards} onChange={({ patents_awards }) => setFormData((p) => ({ ...p, patents_awards }))} />}
             {cat3Step === 'lectures' && <Lectures data={formData.lectures} policyDocTotal={policyDocTotal} totalResearch={cat3.rawTotal} onChange={({ lectures }) => setFormData((p) => ({ ...p, lectures }))} />}
 
-            {/* Cat III summary */}
             <div className="bg-emerald-50 rounded-xl p-4 space-y-2 border border-emerald-100">
               <p className="text-sm font-semibold text-emerald-800 mb-2">Category III Summary</p>
               {[
